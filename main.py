@@ -8,6 +8,7 @@ async def on_ready():
 
 @bot.command()
 async def lol(ctx):
-    await ctx.send(".lol")
+    id = ctx.message.author.id;
+    await ctx.send(f"I am laughing at you <@{id}>")
 
 bot.run("MTA5MjEwNDYwODg3MDA0MzcwOA.GuTTHT.feI5_ZwmwjW0lhQRFUgKra-f751e5LZ3BQR4-g")
