@@ -6,6 +6,15 @@ bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 async def on_ready():
     print("The bot is now online")
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if before.channel is None and after.channel is not None:    
+        await after.channel.connect()
+    if before.channel is not None and after.channel is None:
+        voice_client = member.guild.voice_client
+        if voice_client is not None and len(voice_client.channel.members) == 1:
+            await voice_client.disconnect()
+
 @bot.command()
 async def lol(ctx):
     id = ctx.message.author.id;
@@ -14,14 +23,13 @@ async def lol(ctx):
 @bot.command()
 async def join(ctx):
     channel = ctx.author.voice.channel
-    if ctx.author.voice is None:
-        await ctx.reply("User is not in the voice channel")
-        return
     await channel.connect()
 
 @bot.command()
 async def leave(ctx):
     voice_client = ctx.guild.voice_client
+    if not voice_client:
+        return
     if(voice_client.is_connected):
         await voice_client.disconnect()
 
