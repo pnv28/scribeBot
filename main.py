@@ -39,31 +39,26 @@ async def leave(ctx):
 
 @bot.command()
 async def record(ctx):
-    voice_client = ctx.voice_client
-    if not voice_client:
-        await ctx.send("The bot is not in a VC")
+    if ctx.author.voice is None:
+        await ctx.send("You need to join a voice channel first.")
         return
-    
-    await ctx.send("Recording")
+
+    voice_channel = ctx.author.voice.channel
+    voice_client = await voice_channel.connect()
+
     audio_source = discord.FFmpegPCMAudio("recording.wav")
-    if audio_source is None:
-        await ctx.send("Failed to create audio source.")
-        return
-    audio_player = discord.PCMVolumeTransformer(audio_source)
-    
-    voice_client.play(audio_player)
+    voice_client.play(audio_source)
 
-    while voice_client.is_playing():
-        try:
-            message = await bot.wait_for('message', timeout = 1.0)
-            if message.content.lower() == 'stop' and message.author == ctx.author:
-                voice_client.stio()
-                await ctx.send("Stopped recording")
-        except asyncio.TimeoutError:
-            pass
+    await ctx.send("Recording started.")
 
-    await ctx.send("Finished recording")
-    await ctx.send(file=discord.File("recording.wav"))
+@bot.command()
+async def stop(ctx):
+    voice_client = ctx.voice_client
+    if voice_client is not None:
+        await voice_client.disconnect()
+        await ctx.send("Recording stopped.")
+    else:
+        await ctx.send("I'm not in a voice channel.")
 
 
-bot.run("lol")
+bot.run("")
