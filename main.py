@@ -1,5 +1,9 @@
 import discord
+import os
 from discord.ext import commands
+import asyncio
+import logging
+logging.basicConfig(level=logging.DEBUG)
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 
 @bot.event
@@ -33,4 +37,33 @@ async def leave(ctx):
     if(voice_client.is_connected):
         await voice_client.disconnect()
 
-bot.run("MTA5MjEwNDYwODg3MDA0MzcwOA.GuTTHT.feI5_ZwmwjW0lhQRFUgKra-f751e5LZ3BQR4-g")
+@bot.command()
+async def record(ctx):
+    voice_client = ctx.voice_client
+    if not voice_client:
+        await ctx.send("The bot is not in a VC")
+        return
+    
+    await ctx.send("Recording")
+    audio_source = discord.FFmpegPCMAudio("recording.wav")
+    if audio_source is None:
+        await ctx.send("Failed to create audio source.")
+        return
+    audio_player = discord.PCMVolumeTransformer(audio_source)
+    
+    voice_client.play(audio_player)
+
+    while voice_client.is_playing():
+        try:
+            message = await bot.wait_for('message', timeout = 1.0)
+            if message.content.lower() == 'stop' and message.author == ctx.author:
+                voice_client.stio()
+                await ctx.send("Stopped recording")
+        except asyncio.TimeoutError:
+            pass
+
+    await ctx.send("Finished recording")
+    await ctx.send(file=discord.File("recording.wav"))
+
+
+bot.run("lol")
