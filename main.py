@@ -1,10 +1,13 @@
 import discord
-import os
 import logging
 from discord.ext import commands
 from discord import FFmpegPCMAudio
-import asyncio
-import time
+import pyaudio
+import pydub
+import discord.opus
+import io
+import wave
+
 logging.basicConfig(level=logging.DEBUG)
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 
@@ -14,14 +17,34 @@ async def on_ready():
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    if before.channel is None and after.channel is not None:    
+    if not before.channel and after.channel: 
         voice = await after.channel.connect()
-        source = FFmpegPCMAudio('sed.wav')
-        player = voice.play(source)
-    if before.channel is not None and after.channel is None:
-        voice_client = member.guild.voice_client
-        if voice_client is not None and len(voice_client.channel.members) == 1:
-            await voice_client.disconnect()
+        print(f"Connected to {after.channel}")
+        
+        audio = pyaudio.PyAudio() 
+        
+        stream = audio.open(format=pyaudio.paInt16, channels=1, rate=44100, input=True, frames_per_buffer=1024) # open audio stream
+        
+        frames = []
+        
+        while voice.is_connected():
+            data = stream.read(1024)
+            print(f"Length of audio data: {len(data)}")
+            frames.append(data)
+        stream.stop_stream() 
+        stream.close() 
+        
+        audio.terminate() # terminate PyAudio object
+        
+        waveFile = wave.open("output.wav", "wb") 
+        waveFile.setnchannels(1) 
+        waveFile.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
+        waveFile.setframerate(44100)
+        waveFile.writeframes(b"".join(frames))
+        waveFile.close() 
+        
+        await voice.disconnect()
+        print(f"Disconnected from {after.channel}")
 
 @bot.command()
 async def lol(ctx):
