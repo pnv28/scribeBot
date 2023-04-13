@@ -15,36 +15,50 @@ bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 async def on_ready():
     print("The bot is now online")
 
+MIN_USERS = 1
+p = pyaudio.PyAudio()
+frames = []
+
 @bot.event
 async def on_voice_state_update(member, before, after):
-    if not before.channel and after.channel: 
-        voice = await after.channel.connect()
-        print(f"Connected to {after.channel}")
-        
-        audio = pyaudio.PyAudio() 
-        
-        stream = audio.open(format=pyaudio.paInt16, channels=1, rate=44100, input=True, frames_per_buffer=1024) # open audio stream
-        
-        frames = []
-        
-        while voice.is_connected():
-            data = stream.read(1024)
-            print(f"Length of audio data: {len(data)}")
-            frames.append(data)
-        stream.stop_stream() 
-        stream.close() 
-        
-        audio.terminate() # terminate PyAudio object
-        
-        waveFile = wave.open("output.wav", "wb") 
-        waveFile.setnchannels(1) 
-        waveFile.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
-        waveFile.setframerate(44100)
-        waveFile.writeframes(b"".join(frames))
-        waveFile.close() 
-        
-        await voice.disconnect()
-        print(f"Disconnected from {after.channel}")
+    # Get the voice channel and voice client
+    voice_channel = member.guild.voice_channels[0]
+    voice_client = bot.voice_clients[0] if bot.voice_clients else None
+
+    # Check if the bot needs to join the voice channel
+    if voice_client is None:
+        if voice_channel is not None:
+            voice_client = await voice_channel.connect()
+
+    # Check if the bot needs to leave the voice channel
+    if voice_client is not None:
+        if len(voice_channel.members) == 1 and voice_channel.members[0].id == bot.user.id:
+            await voice_client.disconnect()
+            voice_client = None
+
+    # Check if the bot needs to start or stop recording
+    if voice_client is not None and len(voice_channel.members) >= MIN_USERS:
+        if len(frames) == 0:
+            # Start recording
+            stream = p.open(format=pyaudio.paInt16, channels=1, rate=44100, input=True, frames_per_buffer=1024)
+            print('Recording started')
+        # Append the audio data to the frames list
+        frames.append(stream.read(1024))
+    else:
+        if len(frames) > 0:
+            # Stop recording and save the audio data to a file
+            stream.stop_stream()
+            stream.close()
+            wf = wave.open('output.wav', 'wb')
+            wf.setnchannels(1)
+            wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
+            wf.setframerate(44100)
+            wf.writeframes(b''.join(frames))
+            wf.close()
+            frames.clear()
+            print('Recording stopped')
+
+
 
 @bot.command()
 async def lol(ctx):
